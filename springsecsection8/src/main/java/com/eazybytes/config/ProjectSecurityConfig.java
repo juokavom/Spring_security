@@ -10,9 +10,14 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+
+import com.eazybytes.filter.AuthoritiesLoggingAfterFilter;
+import com.eazybytes.filter.AuthoritiesLoggingAtFilter;
+import com.eazybytes.filter.RequestValidationBeforeFilter;
 
 @Configuration
 public class ProjectSecurityConfig extends WebSecurityConfigurerAdapter {
@@ -21,7 +26,6 @@ public class ProjectSecurityConfig extends WebSecurityConfigurerAdapter {
 	 * /myAccount - Secured /myBalance - Secured /myLoans - Secured /myCards -
 	 * Secured /notices - Not Secured /contact - Not Secured
 	 */
-
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 
@@ -37,11 +41,14 @@ public class ProjectSecurityConfig extends WebSecurityConfigurerAdapter {
 				return config;
 			}
 		}).and().csrf().ignoringAntMatchers("/contact").csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-				.and().authorizeRequests()
+				.and().addFilterBefore(new RequestValidationBeforeFilter(), BasicAuthenticationFilter.class)
+				.addFilterAfter(new AuthoritiesLoggingAfterFilter(), BasicAuthenticationFilter.class)
+				.addFilterAt(new AuthoritiesLoggingAtFilter(), BasicAuthenticationFilter.class)
+				.authorizeRequests()
 				.antMatchers("/myAccount").hasRole("USER")
 				.antMatchers("/myBalance").hasAnyRole("USER","ADMIN")
 				.antMatchers("/myLoans").hasRole("ROOT")
-				.antMatchers("/myCards").authenticated()
+				.antMatchers("/myCards").hasAnyRole("USER","ADMIN")
 				.antMatchers("/user").authenticated()
 				.antMatchers("/notices").permitAll()
 				.antMatchers("/contact").permitAll().and().httpBasic();
